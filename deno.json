@@ -1,0 +1,13 @@
+{
+    "name": "@blitz-bots/bot",
+    "version": "0.1.4",
+    "license": "MIT",
+    "exports": "./src/Bot.ts",
+  "imports": {
+    "@discordjs/rest": "npm:@discordjs/rest@^2.4.0",
+    "@std/assert": "jsr:@std/assert@1",
+    "discord-api-types": "npm:discord-api-types@^0.37.109",
+    "discord.js": "npm:discord.js@^14.16.3",
+    "yaml": "npm:yaml@^2.6.1"
+  }
+}
