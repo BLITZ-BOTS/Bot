@@ -1,8 +1,8 @@
 import {
-    Client,
-    Collection,
-    IntentsBitField,
-    SlashCommandBuilder,
+  Client,
+  Collection,
+  IntentsBitField,
+  SlashCommandBuilder,
 } from "discord.js";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v10";
@@ -65,139 +65,135 @@ import type { Command, Plugin } from "./Types/Plugin.ts";
  * Proper error logging and user feedback are implemented for various operations like command execution and event handling.
  */
 
-
 export class Bot {
-    private readonly client: Client;
-    private readonly token: string;
-    private plugins: Plugin[] = [];
-    private readonly commands: Collection<string, Command> = new Collection();
+  private readonly client: Client;
+  private readonly token: string;
+  private plugins: Plugin[] = [];
+  private readonly commands: Collection<string, Command> = new Collection();
 
-    constructor(token: string, intents?: IntentsBitField[]) {
-        this.token = token;
-        const defaultIntents = [
-            IntentsBitField.Flags.Guilds,
-            IntentsBitField.Flags.GuildMessages,
-            IntentsBitField.Flags.MessageContent,
-            IntentsBitField.Flags.GuildMembers,
-        ];
+  constructor(token: string, intents?: IntentsBitField[]) {
+    this.token = token;
+    const defaultIntents = [
+      IntentsBitField.Flags.Guilds,
+      IntentsBitField.Flags.GuildMessages,
+      IntentsBitField.Flags.MessageContent,
+      IntentsBitField.Flags.GuildMembers,
+    ];
 
-        this.client = new Client({
-            intents: intents || defaultIntents,
-        });
+    this.client = new Client({
+      intents: intents || defaultIntents,
+    });
 
-        this.client.once("ready", () => {
-            if (this.client.user) {
-                console.log(`${this.client.user.username} is online!`);
-            }
-        });
+    this.client.once("ready", () => {
+      if (this.client.user) {
+        console.log(`${this.client.user.username} is online!`);
+      }
+    });
+  }
+
+  async start() {
+    await this.loadPlugins();
+    this.registerEventHandlers();
+
+    this.client.once("ready", async () => {
+      await this.registerCommands();
+    });
+
+    await this.client.login(this.token);
+    (this.client as any).token = undefined;
+  }
+
+  private async loadPlugins() {
+    const pluginLoader = new PluginLoader();
+    this.plugins = await pluginLoader.LoadPlugins();
+
+    for (const plugin of this.plugins) {
+      for (const command of plugin.commands) {
+        this.commands.set(command.name, command);
+      }
+    }
+    console.info(
+      `Loaded ${this.plugins.length} plugins with ${this.commands.size} commands`,
+    );
+  }
+
+  private async registerCommands() {
+    if (!this.client.user) {
+      console.error(
+        "Client user is not available. Commands registration aborted.",
+      );
+      return;
     }
 
-    async start() {
-        await this.loadPlugins();
-        this.registerEventHandlers();
+    const rest = new REST({ version: "10" }).setToken(this.token);
+    const commands = this.plugins.flatMap((plugin) =>
+      plugin.commands.map((cmd) =>
+        new SlashCommandBuilder()
+          .setName(cmd.name)
+          .setDescription(cmd.description)
+          .toJSON()
+      )
+    );
 
-        this.client.once("ready", async () => {
-            await this.registerCommands();
-        });
-
-        await this.client.login(this.token);
-        (this.client as any).token = undefined;
+    try {
+      await rest.put(
+        Routes.applicationCommands(
+          this.client.user.id,
+        ),
+        { body: commands },
+      );
+      console.info("Successfully registered application commands");
+    } catch (error) {
+      console.error("Failed to register application commands", error);
     }
+  }
 
-    private async loadPlugins() {
-        const pluginLoader = new PluginLoader();
-        this.plugins = await pluginLoader.LoadPlugins();
+  private registerEventHandlers() {
+    this.client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand()) return;
 
-        for (const plugin of this.plugins) {
-            for (const command of plugin.commands) {
-                this.commands.set(command.name, command);
-            }
-        }
-        console.info(
-            `Loaded ${this.plugins.length} plugins with ${this.commands.size} commands`,
+      const command = this.commands.get(interaction.commandName);
+      if (!command) {
+        console.warn(`Command ${interaction.commandName} not found.`);
+        return;
+      }
+
+      try {
+        const plugin = this.plugins.find((p) =>
+          p.commands.some((cmd) => cmd.name === interaction.commandName)
         );
-    }
+        if (!plugin) return;
 
-    private async registerCommands() {
-        if (!this.client.user) {
-            console.error(
-                "Client user is not available. Commands registration aborted.",
-            );
-            return;
-        }
-
-        const rest = new REST({ version: "10" }).setToken(this.token);
-        const commands = this.plugins.flatMap((plugin) =>
-            plugin.commands.map((cmd) =>
-                new SlashCommandBuilder()
-                    .setName(cmd.name)
-                    .setDescription(cmd.description)
-                    .toJSON()
-            )
+        await command.action(interaction, plugin.config.config);
+      } catch (error) {
+        console.error(
+          `Error executing command ${interaction.commandName}`,
+          error,
         );
-
-        try {
-            await rest.put(
-                Routes.applicationGuildCommands(
-                    this.client.user.id,
-                    "1287858702430376039",
-                ),
-                { body: commands },
-            );
-            console.info("Successfully registered application commands");
-        } catch (error) {
-            console.error("Failed to register application commands", error);
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp({
+            content: "There was an error executing this command!",
+            ephemeral: true,
+          });
+        } else {
+          await interaction.reply({
+            content: "There was an error executing this command!",
+            ephemeral: true,
+          });
         }
-    }
+      }
+    });
 
-    private registerEventHandlers() {
-        this.client.on("interactionCreate", async (interaction) => {
-            if (!interaction.isChatInputCommand()) return;
-
-            const command = this.commands.get(interaction.commandName);
-            if (!command) {
-                console.warn(`Command ${interaction.commandName} not found.`);
-                return;
-            }
-
-            try {
-                const plugin = this.plugins.find((p) =>
-                    p.commands.some((cmd) =>
-                        cmd.name === interaction.commandName
-                    )
-                );
-                if (!plugin) return;
-
-                await command.action(interaction, plugin.config.config);
-            } catch (error) {
-                console.error(
-                    `Error executing command ${interaction.commandName}`,
-                    error,
-                );
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({
-                        content: "There was an error executing this command!",
-                        ephemeral: true,
-                    });
-                } else {
-                    await interaction.reply({
-                        content: "There was an error executing this command!",
-                        ephemeral: true,
-                    });
-                }
-            }
-        });
-
-        for (const plugin of this.plugins) {
-            for (const event of plugin.events) {
-                const handler = (...args: unknown[]) =>
-                    event.action(this.client, plugin.config.config, ...args);
-                if (event.once) {
-                    this.client.once(event.event, handler);
-                } else {
-                    this.client.on(event.event, handler);
-                }
-            }
+    for (const plugin of this.plugins) {
+      for (const event of plugin.events) {
+        const handler = (...args: unknown[]) =>
+          event.action(this.client, plugin.config.config, ...args);
+        if (event.once) {
+          this.client.once(event.event, handler);
+        } else {
+          this.client.on(event.event, handler);
         }
+      }
     }
+  }
 }
