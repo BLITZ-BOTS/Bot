@@ -72,6 +72,7 @@ export interface Command {
   name: string;
   description: string;
   action: (
+    client: Client,
     interaction: ChatInputCommandInteraction,
     config: Record<string, unknown>,
   ) => Promise<void>;

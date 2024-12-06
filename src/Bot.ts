@@ -164,7 +164,7 @@ export class Bot {
         );
         if (!plugin) return;
 
-        await command.action(interaction, plugin.config.config);
+        await command.action(this.client, interaction, plugin.config.config);
       } catch (error) {
         console.error(
           `Error executing command ${interaction.commandName}`,

@@ -1,4 +1,4 @@
-import type { Command, Event, Plugin } from "../Types/Plugin.ts";
+import type { Command, Event, Plugin, PluginConfig } from "../Types/Plugin.ts";
 import { parse } from "yaml";
 import { Validators } from "../Validators/Validators.ts";
 import { ModuleLoader } from "./ModuleLoader.ts";
@@ -81,10 +81,20 @@ export class PluginLoader {
   private async LoadPluginFiles(PluginName: string): Promise<Plugin | null> {
     try {
       const PluginPath = `${this.PluginsDir}/${PluginName}`;
-      const PluginConfig = await this.LoadPluginConfig(PluginPath);
 
-      if (!PluginConfig) {
-        console.error(`Invalid config for plugin ${PluginName}`);
+      // Load the configuration, falling back to defaults for name and version
+      const PluginConfigRaw = await this.LoadPluginConfig(PluginPath);
+      const PluginConfig: PluginConfig = {
+        name: PluginConfigRaw?.name ?? PluginName, // Use the folder name if missing
+        version: PluginConfigRaw?.version ?? "unknown", // Default version
+        description: PluginConfigRaw?.description ?? "No description provided",
+        config: PluginConfigRaw?.config ?? {}, // Default empty object
+      };
+
+      if (!PluginConfig.name || !PluginConfig.version) {
+        console.error(
+          `Plugin ${PluginName} is missing mandatory fields: 'name' and/or 'version'. Skipping.`,
+        );
         return null;
       }
 
@@ -95,7 +105,6 @@ export class PluginLoader {
         `Successfully loaded plugin: ${PluginConfig.name} v${PluginConfig.version}`,
       );
 
-      // Return object matching the `Plugin` type
       return {
         config: PluginConfig,
         commands: PluginCommands,
@@ -110,20 +119,25 @@ export class PluginLoader {
     }
   }
 
-  private async LoadPluginConfig(PluginPath: string) {
+  private async LoadPluginConfig(
+    PluginPath: string,
+  ): Promise<Partial<PluginConfig> | null> {
     try {
       const PluginConfigPath = `${PluginPath}/blitz.config.yaml`;
       const PluginConfigRAW = await Deno.readTextFile(PluginConfigPath);
       const PluginConfig = await parse(PluginConfigRAW);
 
       if (!Validators.isPluginConfig(PluginConfig)) {
-        console.error("Invalid plugin configuration format");
+        console.warn(
+          "Invalid plugin configuration format; skipping validation.",
+        );
         return null;
       }
+
       return PluginConfig;
     } catch (error) {
-      console.error(
-        "Failed to load plugin configuration",
+      console.warn(
+        "No valid configuration file found; proceeding without config.",
         error as Error,
       );
       return null;
@@ -133,21 +147,47 @@ export class PluginLoader {
   private async LoadPluginCommands(PluginPath: string): Promise<Command[]> {
     const PluginCommandPath = `${PluginPath}/commands`;
 
-    const commands = await ModuleLoader.loadModulesFromDirectory<Command>(
-      PluginCommandPath,
-      Validators.isCommand,
-    );
-
-    return commands;
+    try {
+      const stats = await Deno.lstat(PluginCommandPath);
+      if (!stats.isDirectory) {
+        return [];
+      }
+      return await ModuleLoader.loadModulesFromDirectory<Command>(
+        PluginCommandPath,
+        Validators.isCommand,
+      );
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        // Silently return an empty array if the directory does not exist
+        return [];
+      }
+      console.error(
+        `Failed to load commands from: ${PluginCommandPath}`,
+        error,
+      );
+      return [];
+    }
   }
 
   private async LoadPluginEvents(PluginPath: string): Promise<Event[]> {
     const PluginEventPath = `${PluginPath}/events`;
-    const events = await ModuleLoader.loadModulesFromDirectory<Event>(
-      PluginEventPath,
-      Validators.isEvent,
-    );
 
-    return events as Event[];
+    try {
+      const stats = await Deno.lstat(PluginEventPath);
+      if (!stats.isDirectory) {
+        return [];
+      }
+      return await ModuleLoader.loadModulesFromDirectory<Event>(
+        PluginEventPath,
+        Validators.isEvent,
+      );
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        // Silently return an empty array if the directory does not exist
+        return [];
+      }
+      console.error(`Failed to load events from: ${PluginEventPath}`, error);
+      return [];
+    }
   }
 }

@@ -70,7 +70,7 @@ export class Validators {
       return false;
     }
 
-    const requiredFields = ["name", "description", "version", "config"];
+    const requiredFields = ["name", "version"];
     for (const field of requiredFields) {
       if (!(field in config)) {
         return false;
@@ -78,11 +78,21 @@ export class Validators {
     }
 
     const typedConfig = config as PluginConfig;
-    return (
-      typeof typedConfig.name === "string" &&
-      typeof typedConfig.description === "string" &&
-      typeof typedConfig.version === "string" &&
-      typeof typedConfig.config === "object"
-    );
+
+    // Validate required fields
+    if (
+      typeof typedConfig.name !== "string" ||
+      typeof typedConfig.version !== "string"
+    ) {
+      return false;
+    }
+
+    // Optional fields: description and config
+    const descriptionIsValid = typeof typedConfig.description === "string" ||
+      typeof typedConfig.description === "undefined";
+    const configIsValid = typeof typedConfig.config === "object" ||
+      typeof typedConfig.config === "undefined";
+
+    return descriptionIsValid && configIsValid;
   }
 }
