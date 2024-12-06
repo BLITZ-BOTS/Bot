@@ -2,7 +2,7 @@ import {
   Client,
   Collection,
   IntentsBitField,
-} from "npm:discord.js@15.0.0-dev.1733443983-00dceb32b";
+} from "npm:discord.js@14.16.3";
 import { REST } from "npm:@discordjs/rest@3.0.0-dev.1733443982-00dceb32b";
 import { Routes } from "npm:discord-api-types@0.37.111-next.68e19d3.1733415378/v10";
 import { PluginLoader } from "./Utils/PluginLoader.ts";
