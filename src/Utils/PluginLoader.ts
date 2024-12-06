@@ -1,5 +1,5 @@
 import type { Command, Event, Plugin, PluginConfig } from "../Types/Plugin.ts";
-import { parse } from "yaml";
+import { parse } from "npm:yaml";
 import { Validators } from "../Validators/Validators.ts";
 import { ModuleLoader } from "./ModuleLoader.ts";
 

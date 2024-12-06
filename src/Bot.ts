@@ -1,11 +1,6 @@
-import {
-  Client,
-  Collection,
-  IntentsBitField,
-  SlashCommandBuilder,
-} from "discord.js";
-import { REST } from "@discordjs/rest";
-import { Routes } from "discord-api-types/v10";
+import { Client, Collection, IntentsBitField } from "npm:discord.js";
+import { REST } from "npm:@discordjs/rest";
+import { Routes } from "npm:discord-api-types/v10";
 import { PluginLoader } from "./Utils/PluginLoader.ts";
 import type { Command, Plugin } from "./Types/Plugin.ts";
 
@@ -109,7 +104,7 @@ export class Bot {
 
     for (const plugin of this.plugins) {
       for (const command of plugin.commands) {
-        this.commands.set(command.name, command);
+        this.commands.set(command.data.name, command);
       }
     }
     console.info(
@@ -128,9 +123,7 @@ export class Bot {
     const rest = new REST({ version: "10" }).setToken(this.token);
     const commands = this.plugins.flatMap((plugin) =>
       plugin.commands.map((cmd) =>
-        new SlashCommandBuilder()
-          .setName(cmd.name)
-          .setDescription(cmd.description)
+        cmd.data
           .toJSON()
       )
     );
@@ -160,7 +153,7 @@ export class Bot {
 
       try {
         const plugin = this.plugins.find((p) =>
-          p.commands.some((cmd) => cmd.name === interaction.commandName)
+          p.commands.some((cmd) => cmd.data.name === interaction.commandName)
         );
         if (!plugin) return;
 

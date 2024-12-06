@@ -1,4 +1,8 @@
-import type { ChatInputCommandInteraction, Client } from "discord.js";
+import type {
+  ChatInputCommandInteraction,
+  Client,
+  SlashCommandBuilder,
+} from "discord.js";
 
 /**
  * @module PluginTypes
@@ -69,8 +73,7 @@ export interface PluginConfig {
 }
 
 export interface Command {
-  name: string;
-  description: string;
+  data: SlashCommandBuilder;
   action: (
     client: Client,
     interaction: ChatInputCommandInteraction,
