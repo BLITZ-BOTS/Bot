@@ -1,6 +1,6 @@
 {
   "name": "@blitz-bots/bot",
-  "version": "1.2.0",
+  "version": "1.2.5",
   "license": "MIT",
   "exports": "./src/Bot.ts",
   "imports": {

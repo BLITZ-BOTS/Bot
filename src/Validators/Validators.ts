@@ -1,85 +1,66 @@
+import { SlashCommandBuilder } from "npm:discord.js@14.16.3";
 import type { Command, Event, PluginConfig } from "../Types/Plugin.ts";
 
 /**
  * @module Validators
- *
- * This module provides a set of static methods to validate the structure and type conformity
- * of various entities used in the plugin-based Discord bot framework.
- * The validations ensure that commands, events, and plugin configurations adhere to their
- * defined TypeScript interfaces.
- *
- * Key Features:
- * - **Command Validation**: Ensures objects conform to the `Command` type.
- * - **Event Validation**: Ensures objects conform to the `Event` type.
- * - **Plugin Configuration Validation**: Verifies that plugin configuration objects are properly structured.
- *
- * Usage:
- * Import the `Validators` class and use its static methods to validate unknown objects before
- * processing them as `Command`, `Event`, or `PluginConfig` types.
- *
- * @example
- * ```typescript
- * import { Validators } from './Utils/Validators';
- *
- * const unknownObject: unknown = getObject();
- * if (Validators.isCommand(unknownObject)) {
- *     console.log('Valid Command:', unknownObject.name);
- * }
- * ```
- *
- * Structure:
- * - **Static Methods**:
- *   - `isCommand(module: unknown): boolean`: Checks if the given object is a valid `Command`.
- *   - `isEvent(module: unknown): boolean`: Checks if the given object is a valid `Event`.
- *   - `isPluginConfig(config: unknown): boolean`: Verifies if the given object is a proper `PluginConfig`.
- *
- * Error Prevention:
- * Using these validators helps prevent runtime errors by ensuring objects are properly typed before usage.
- *
- * Type Definitions:
- * The `Command`, `Event`, and `PluginConfig` types are imported from the `../Types/Plugin.ts` module
- * and define the structure of these entities.
+ * 
+ * This module provides static methods for validating the structure and type conformity of various entities.
  */
-
 export class Validators {
+  /**
+   * Validates if the provided module is a Command.
+   * @param module - The object to validate.
+   * @returns True if the module is a Command, otherwise false.
+   */
   static isCommand(module: unknown): module is Command {
-    return !!(
-      module &&
-      typeof module === "object" &&
-      "name" in module &&
-      "description" in module &&
-      "action" in module &&
-      typeof (module as any).action === "function"
-    );
-  }
-
-  static isEvent(module: unknown): module is Event {
-    return !!(
-      module &&
-      typeof module === "object" &&
+    return (
       module !== null &&
-      typeof (module as Event).event === "string" &&
-      (typeof (module as Event).once === "boolean" ||
-        typeof (module as Event).once === "undefined") &&
-      typeof (module as Event).action === "function"
+      typeof module === "object" &&
+      module.hasOwnProperty("data") &&
+      module.hasOwnProperty("action") &&
+      (module as Command).data instanceof SlashCommandBuilder &&
+      typeof (module as Command).action === "function"
     );
   }
 
-  static isPluginConfig(config: unknown): config is PluginConfig {
-    if (!config || typeof config !== "object") {
+  /**
+   * Validates if the provided module is an Event.
+   * @param module - The object to validate.
+   * @returns True if the module is an Event, otherwise false.
+   */
+  static isEvent(module: unknown): module is Event {
+    if (module === null || typeof module !== "object") {
       return false;
     }
 
+    const typedModule = module as Event;
+    return (
+      typeof typedModule.event === "string" &&
+      (typeof typedModule.once === "boolean" || typedModule.once === undefined) &&
+      typeof typedModule.action === "function"
+    );
+  }
+
+  /**
+   * Validates if the provided config is a PluginConfig.
+   * @param config - The object to validate.
+   * @returns True if the config is a PluginConfig, otherwise false.
+   */
+  static isPluginConfig(config: unknown): config is PluginConfig {
+    if (config === null || typeof config !== "object") {
+      return false;
+    }
+
+    const typedConfig = config as PluginConfig;
     const requiredFields = ["name", "version"];
+
+    // Check required fields
     for (const field of requiredFields) {
-      if (!(field in config)) {
+      if (!(field in typedConfig)) {
         return false;
       }
     }
 
-    const typedConfig = config as PluginConfig;
-
-    // Validate required fields
     if (
       typeof typedConfig.name !== "string" ||
       typeof typedConfig.version !== "string"
@@ -87,11 +68,13 @@ export class Validators {
       return false;
     }
 
-    // Optional fields: description and config
-    const descriptionIsValid = typeof typedConfig.description === "string" ||
-      typeof typedConfig.description === "undefined";
-    const configIsValid = typeof typedConfig.config === "object" ||
-      typeof typedConfig.config === "undefined";
+    // Check optional fields
+    const descriptionIsValid =
+      typeof typedConfig.description === "undefined" ||
+      typeof typedConfig.description === "string";
+    const configIsValid =
+      typeof typedConfig.config === "undefined" ||
+      (typedConfig.config !== null && typeof typedConfig.config === "object");
 
     return descriptionIsValid && configIsValid;
   }
