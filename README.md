@@ -1,4 +1,4 @@
-# <img src="./blitz_bot.png">
+# <img src="https://assets.blitz-bots.com/banner.svg">
 
 This bot is designed to load and manage plugins dynamically, handling their
 respective events and commands.
