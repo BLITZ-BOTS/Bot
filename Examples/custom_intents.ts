@@ -11,8 +11,7 @@ if (!token) {
 const customIntents = [
   IntentsBitField.Flags.Guilds,
   IntentsBitField.Flags.GuildMessages,
-  IntentsBitField.Flags.MessageContent,
-  IntentsBitField.Flags.GuildMessageReactions,
+  IntentsBitField.Flags.MessageContent
 ];
 
 const bot = new Bot(token, customIntents);
