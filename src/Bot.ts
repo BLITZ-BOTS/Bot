@@ -1,13 +1,3 @@
-import {
-  Client,
-  Collection,
-  IntentsBitField,
-} from "npm:discord.js@14.16.3";
-import { REST } from "npm:@discordjs/rest@3.0.0-dev.1733443982-00dceb32b";
-import { Routes } from "npm:discord-api-types@0.37.111-next.68e19d3.1733415378/v10";
-import { PluginLoader } from "./Utils/PluginLoader.ts";
-import type { Command, Plugin } from "./Types/Plugin.ts";
-
 /**
  * @module Bot
  *
@@ -15,15 +5,15 @@ import type { Command, Plugin } from "./Types/Plugin.ts";
  * It manages the bot's lifecycle, event handling, and dynamic plugin and command registration.
  *
  * Key Features:
- * - **Plugin System**: Loads plugins dynamically to extend the bot's functionality.
- * - **Command Registration**: Registers slash commands to Discord's API.
- * - **Event Handling**: Supports both built-in and custom event handling through plugins.
- * - **Customizable Intents**: Users can specify custom intents during bot initialization to tailor the bot's functionality to their needs.
+ * - **Plugin System**: Dynamically loads plugins to extend the bot's functionality.
+ * - **Command Registration**: Registers slash commands with Discord's API.
+ * - **Event Handling**: Supports built-in and custom event handling through plugins.
+ * - **Customizable Intents**: Allows users to specify custom intents during bot initialization.
  *
  * Dependencies:
- * - discord.js: Used for interacting with the Discord API.
- * - @discordjs/rest: Utilized for RESTful interactions with Discord endpoints.
- * - PluginLoader: A custom utility class for loading plugins dynamically.
+ * - discord.js: For interacting with the Discord API.
+ * - @discordjs/rest: For RESTful interactions with Discord endpoints.
+ * - PluginLoader: A custom utility for loading plugins dynamically.
  * - Types/Plugin.ts: Defines the structure of plugins and commands.
  *
  * Usage:
@@ -64,6 +54,16 @@ import type { Command, Plugin } from "./Types/Plugin.ts";
  * Proper error logging and user feedback are implemented for various operations like command execution and event handling.
  */
 
+import { 
+  Client, 
+  Collection, 
+  IntentsBitField 
+} from "discord.js"; 
+import { REST } from "@discordjs/rest"; 
+import { Routes } from "discord-api-types/v10";
+import { PluginLoader } from "./Utils/PluginLoader.js"; 
+import type { Command, Plugin } from "./Types/Plugin.js";
+
 export class Bot {
   private readonly client: Client;
   private readonly token: string;
@@ -99,6 +99,7 @@ export class Bot {
     });
 
     await this.client.login(this.token);
+
     (this.client as any).token = undefined;
   }
 
@@ -111,6 +112,7 @@ export class Bot {
         this.commands.set(command.data.name, command);
       }
     }
+
     console.info(
       `Loaded ${this.plugins.length} plugins with ${this.commands.size} commands`,
     );
@@ -126,17 +128,12 @@ export class Bot {
 
     const rest = new REST({ version: "10" }).setToken(this.token);
     const commands = this.plugins.flatMap((plugin) =>
-      plugin.commands.map((cmd) =>
-        cmd.data
-          .toJSON()
-      )
+      plugin.commands.map((cmd) => cmd.data.toJSON())
     );
 
     try {
       await rest.put(
-        Routes.applicationCommands(
-          this.client.user.id,
-        ),
+        Routes.applicationCommands(this.client.user.id),
         { body: commands },
       );
       console.info("Successfully registered application commands");
