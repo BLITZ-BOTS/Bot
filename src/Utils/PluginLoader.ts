@@ -1,8 +1,3 @@
-import type { Command, Event, Plugin, PluginConfig } from "../Types/Plugin.ts";
-import { parse } from "npm:yaml@2.6.1";
-import { Validators } from "../Validators/Validators.ts";
-import { ModuleLoader } from "./ModuleLoader.ts";
-
 /**
  * @module PluginLoader
  *
@@ -56,6 +51,11 @@ import { ModuleLoader } from "./ModuleLoader.ts";
  * - `Validators`: For validating loaded modules against expected types.
  * - `ModuleLoader`: For dynamically importing commands and events.
  */
+
+import type { Command, Event, Plugin, PluginConfig } from "../Types/Plugin.ts";
+import { parse } from "npm:yaml@2.6.1";
+import { Validators } from "../Validators/Validators.ts";
+import { ModuleLoader } from "./ModuleLoader.ts";
 
 export class PluginLoader {
   private PluginsDir: string;
