@@ -1,195 +1,170 @@
-import {
-  Client,
-  Collection,
-  IntentsBitField,
-} from "npm:discord.js@14.16.3";
+import { Client, Collection, IntentsBitField } from "npm:discord.js@14.16.3";
 import { REST } from "npm:@discordjs/rest@3.0.0-dev.1733443982-00dceb32b";
 import { Routes } from "npm:discord-api-types@0.37.111-next.68e19d3.1733415378/v10";
+
 import { PluginLoader } from "./Utils/PluginLoader.ts";
-import type { Command, Plugin } from "./Types/Plugin.ts";
+import type { Plugin, Command } from "./Types/Plugin.ts";
 
 /**
- * @module Bot
- *
- * This module defines the `Bot` class, which implements a modular, plugin-based Discord bot.
- * It manages the bot's lifecycle, event handling, and dynamic plugin and command registration.
- *
- * Key Features:
- * - **Plugin System**: Loads plugins dynamically to extend the bot's functionality.
- * - **Command Registration**: Registers slash commands to Discord's API.
- * - **Event Handling**: Supports both built-in and custom event handling through plugins.
- * - **Customizable Intents**: Users can specify custom intents during bot initialization to tailor the bot's functionality to their needs.
- *
- * Dependencies:
- * - discord.js: Used for interacting with the Discord API.
- * - @discordjs/rest: Utilized for RESTful interactions with Discord endpoints.
- * - PluginLoader: A custom utility class for loading plugins dynamically.
- * - Types/Plugin.ts: Defines the structure of plugins and commands.
- *
- * Usage:
- * Import and instantiate the `Bot` class, providing a Discord bot token.
- * Optionally, pass an array of custom intents to modify the bot's scope of operations.
- * Call the `start()` method to initialize and run the bot.
- *
- * @example
- * ```typescript
- * import { Bot } from './Bot';
- * import { IntentsBitField } from 'discord.js';
- *
- * // Using default intents
- * const bot = new Bot('your-discord-bot-token');
- * bot.start();
- *
- * // Using custom intents
- * const customIntents = [
- *     IntentsBitField.Flags.Guilds,
- *     IntentsBitField.Flags.GuildMessages,
- *     IntentsBitField.Flags.GuildPresences, // Example of a custom intent
- * ];
- * const customBot = new Bot('your-discord-bot-token', customIntents);
- * customBot.start();
- * ```
- *
- * Structure:
- * - **Bot Class**: Manages core bot functionalities, including plugin management, event handling, and command registration.
- * - **Private Methods**:
- *   - `loadPlugins()`: Dynamically loads plugins and stores their commands and event handlers.
- *   - `registerCommands()`: Registers all slash commands with the Discord API.
- *   - `registerEventHandlers()`: Attaches event listeners to the bot client.
- *
- * External Configuration:
- * Each plugin is expected to export its own configuration and functionalities, including commands and event handlers.
- *
- * Error Handling:
- * Proper error logging and user feedback are implemented for various operations like command execution and event handling.
+ * Represents the main Bot class.
+ * This class:
+ * - Manages the bot client.
+ * - Loads plugins dynamically.
+ * - Registers commands/events.
+ * - Interacts with Discord's API for slash commands.
  */
-
 export class Bot {
-  private readonly client: Client;
+  private client: Client;
   private readonly token: string;
   private plugins: Plugin[] = [];
-  private readonly commands: Collection<string, Command> = new Collection();
+  private commands: Collection<string, Command> = new Collection();
 
-  constructor(token: string, intents?: IntentsBitField[]) {
+  constructor(token: string) {
     this.token = token;
-    const defaultIntents = [
-      IntentsBitField.Flags.Guilds,
-      IntentsBitField.Flags.GuildMessages,
-      IntentsBitField.Flags.MessageContent,
-      IntentsBitField.Flags.GuildMembers,
-    ];
 
     this.client = new Client({
-      intents: intents || defaultIntents,
+      intents: [
+        IntentsBitField.Flags.Guilds,
+        IntentsBitField.Flags.GuildMessages,
+        IntentsBitField.Flags.MessageContent,
+        IntentsBitField.Flags.GuildMembers,
+      ],
     });
 
-    this.client.once("ready", () => {
-      if (this.client.user) {
-        console.log(`${this.client.user.username} is online!`);
-      }
-    });
+    this.client.once("ready", this.onReady.bind(this));
+    this.client.on("interactionCreate", this.handleInteraction.bind(this));
   }
 
+  /**
+   * Starts the bot by logging in and loading plugins.
+   */
   async start() {
-    await this.loadPlugins();
-    this.registerEventHandlers();
-
-    this.client.once("ready", async () => {
+    try {
+      await this.loadPlugins();
       await this.registerCommands();
-    });
-
-    await this.client.login(this.token);
-    (this.client as any).token = undefined;
+      await this.client.login(this.token);
+    } catch (error) {
+      console.error("❌ Failed to start the bot:", error);
+    }
   }
 
+  /**
+   * Logs a success message when the bot is ready.
+   */
+  private onReady() {
+    console.log(`✅ Bot is online as ${this.client.user?.tag}`);
+  }
+
+  /**
+   * Loads plugins and registers their commands and events.
+   */
   private async loadPlugins() {
-    const pluginLoader = new PluginLoader();
-    this.plugins = await pluginLoader.LoadPlugins();
+    console.log("🔌 Loading plugins...");
+
+    const loader = new PluginLoader();
+    this.plugins = await loader.LoadPlugins();
 
     for (const plugin of this.plugins) {
-      for (const command of plugin.commands) {
-        this.commands.set(command.data.name, command);
-      }
+      this.registerPluginCommands(plugin);
+      this.registerPluginEvents(plugin);
     }
-    console.info(
-      `Loaded ${this.plugins.length} plugins with ${this.commands.size} commands`,
-    );
+
+    console.log(`🔌 Successfully loaded ${this.plugins.length} plugins.`);
   }
 
+  /**
+   * Registers commands from a plugin into the bot's command collection.
+   */
+  private registerPluginCommands(plugin: Plugin) {
+    for (const command of plugin.commands) {
+      if (this.commands.has(command.data.name)) {
+        console.warn(`⚠️ Command "${command.data.name}" is already registered.`);
+        continue;
+      }
+
+      this.commands.set(command.data.name, command);
+    }
+  }
+
+  /**
+   * Registers events from a plugin into the bot's client.
+   */
+  private registerPluginEvents(plugin: Plugin) {
+    for (const event of plugin.events) {
+      const handler = (...args: unknown[]) => {
+        event.action(this.client, plugin.config.config, ...args);
+      };
+
+      if (event.once) {
+        this.client.once(event.event, handler);
+      } else {
+        this.client.on(event.event, handler);
+      }
+    }
+  }
+
+  /**
+   * Registers slash commands with Discord's API.
+   */
   private async registerCommands() {
     if (!this.client.user) {
-      console.error(
-        "Client user is not available. Commands registration aborted.",
-      );
+      console.error("❌ Client is not ready. Aborting command registration.");
       return;
     }
 
+    console.log("📜 Registering slash commands...");
+
     const rest = new REST({ version: "10" }).setToken(this.token);
     const commands = this.plugins.flatMap((plugin) =>
-      plugin.commands.map((cmd) =>
-        cmd.data
-          .toJSON()
-      )
+      plugin.commands.map((cmd) => cmd.data.toJSON())
     );
 
     try {
-      await rest.put(
-        Routes.applicationCommands(
-          this.client.user.id,
-        ),
-        { body: commands },
-      );
-      console.info("Successfully registered application commands");
+      await rest.put(Routes.applicationCommands(this.client.user.id), {
+        body: commands,
+      });
+      console.log(`✅ Successfully registered ${commands.length} commands.`);
     } catch (error) {
-      console.error("Failed to register application commands", error);
+      console.error("❌ Failed to register commands:", error);
     }
   }
 
-  private registerEventHandlers() {
-    this.client.on("interactionCreate", async (interaction) => {
-      if (!interaction.isChatInputCommand()) return;
+  /**
+   * Handles incoming interactions and executes the appropriate command.
+   */
+  private async handleInteraction(interaction: any) {
+    if (!interaction.isChatInputCommand()) return;
 
-      const command = this.commands.get(interaction.commandName);
-      if (!command) {
-        console.warn(`Command ${interaction.commandName} not found.`);
-        return;
-      }
+    const command = this.commands.get(interaction.commandName);
+    if (!command) {
+      console.warn(`⚠️ Command "${interaction.commandName}" not found.`);
+      return;
+    }
 
-      try {
-        const plugin = this.plugins.find((p) =>
-          p.commands.some((cmd) => cmd.data.name === interaction.commandName)
-        );
-        if (!plugin) return;
+    try {
+      const plugin = this.plugins.find((p) =>
+        p.commands.some((cmd) => cmd.data.name === interaction.commandName)
+      );
 
-        await command.action(this.client, interaction, plugin.config.config);
-      } catch (error) {
-        console.error(
-          `Error executing command ${interaction.commandName}`,
-          error,
-        );
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({
-            content: "There was an error executing this command!",
-            ephemeral: true,
-          });
-        } else {
-          await interaction.reply({
-            content: "There was an error executing this command!",
-            ephemeral: true,
-          });
-        }
-      }
-    });
+      if (!plugin) throw new Error("Plugin not found.");
 
-    for (const plugin of this.plugins) {
-      for (const event of plugin.events) {
-        const handler = (...args: unknown[]) =>
-          event.action(this.client, plugin.config.config, ...args);
-        if (event.once) {
-          this.client.once(event.event, handler);
-        } else {
-          this.client.on(event.event, handler);
-        }
+      await command.action(this.client, interaction, plugin.config.config);
+    } catch (error) {
+      console.error(
+        `❌ Failed to execute command "${interaction.commandName}":`,
+        error,
+      );
+
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({
+          content: "⚠️ There was an error executing this command!",
+          ephemeral: true,
+        });
+      } else {
+        await interaction.reply({
+          content: "⚠️ There was an error executing this command!",
+          ephemeral: true,
+        });
       }
     }
   }
