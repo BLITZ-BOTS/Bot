@@ -53,9 +53,9 @@ import {
   REST,
   Routes,
   Interaction,
-} from "discord.js";
-import { PluginLoader } from "./Utils/PluginLoader";
-import { Plugin, Command } from "./Types/Plugin";
+} from "npm:discord.js";
+import { PluginLoader } from "./Utils/PluginLoader.ts";
+import { Plugin, Command } from "./Types/Plugin.ts";
 
 export class Bot {
   private readonly client: Client;
