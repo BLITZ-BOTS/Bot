@@ -30,28 +30,20 @@
  * const bot = new Bot('your-discord-bot-token');
  * bot.start();
  *
- * // Using custom intents
+ * // Using custom intents and custom plugin directory
  * const customIntents = [
  *     IntentsBitField.Flags.Guilds,
  *     IntentsBitField.Flags.GuildMessages,
- *     IntentsBitField.Flags.GuildPresences, // Example of a custom intent
  * ];
- * const customBot = new Bot('your-discord-bot-token', customIntents);
+ * const customBot = new Bot({
+ *     token: 'your-discord-bot-token',
+ *     intents: customIntents,
+ *     pluginsDir: './custom_plugins',
+ * });
  * customBot.start();
  * ```
  *
- * Structure:
- * - **Bot Class**: Manages core bot functionalities, including plugin management, event handling, and command registration.
- * - **Private Methods**:
- *   - `loadPlugins()`: Dynamically loads plugins and stores their commands and event handlers.
- *   - `registerCommands()`: Registers all slash commands with the Discord API.
- *   - `registerEventHandlers()`: Attaches event listeners to the bot client.
- *
- * External Configuration:
- * Each plugin is expected to export its own configuration and functionalities, including commands and event handlers.
- *
- * Error Handling:
- * Proper error logging and user feedback are implemented for various operations like command execution and event handling.
+ * Also, use `deno fmt` to format the files for consistent formatting.
  */
 
 import {
@@ -62,7 +54,7 @@ import {
   Routes,
   Interaction,
 } from "discord.js";
-import { PluginLoader } from "./PluginLoader";
+import { PluginLoader } from "./Utils/PluginLoader";
 import { Plugin, Command } from "./Types/Plugin";
 
 export class Bot {
@@ -72,7 +64,15 @@ export class Bot {
   private readonly commands: Collection<string, Command> = new Collection();
   private pluginsDir: string;
 
-  constructor({ token, intents, pluginsDir = "/plugins" }: { token: string; intents?: IntentsBitField[]; pluginsDir?: string }) {
+  constructor({
+    token,
+    intents,
+    pluginsDir = `${Deno.cwd()}/plugins`,
+  }: {
+    token: string;
+    intents?: IntentsBitField[];
+    pluginsDir?: string;
+  }) {
     this.token = token;
     this.pluginsDir = pluginsDir;
 
@@ -107,8 +107,8 @@ export class Bot {
   }
 
   private async loadPlugins() {
-    const pluginLoader = new PluginLoader();
-    this.plugins = await pluginLoader.LoadPlugins(this.pluginsDir);
+    const pluginLoader = new PluginLoader(this.pluginsDir);
+    this.plugins = await pluginLoader.LoadPlugins();
 
     for (const plugin of this.plugins) {
       for (const command of plugin.commands) {
@@ -130,19 +130,13 @@ export class Bot {
 
     const rest = new REST({ version: "10" }).setToken(this.token);
     const commands = this.plugins.flatMap((plugin) =>
-      plugin.commands.map((cmd) =>
-        cmd.data
-          .toJSON()
-      )
+      plugin.commands.map((cmd) => cmd.data.toJSON())
     );
 
     try {
-      await rest.put(
-        Routes.applicationCommands(
-          this.client.user.id,
-        ),
-        { body: commands },
-      );
+      await rest.put(Routes.applicationCommands(this.client.user.id), {
+        body: commands,
+      });
       console.info("Successfully registered application commands");
     } catch (error) {
       console.error("Failed to register application commands", error);
