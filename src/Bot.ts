@@ -53,7 +53,7 @@ import {
   Interaction,
   REST,
   Routes,
-} from "npm:discord.js";
+} from "npm:discord.js@14.16.3";
 import { PluginLoader } from "./Utils/PluginLoader.ts";
 import { Command, Plugin } from "./Types/Plugin.ts";
 
