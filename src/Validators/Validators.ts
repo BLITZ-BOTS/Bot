@@ -3,7 +3,7 @@ import type { Command, Event, PluginConfig } from "../Types/Plugin.ts";
 
 /**
  * @module Validators
- * 
+ *
  * This module provides static methods for validating the structure and type conformity of various entities.
  */
 export class Validators {
@@ -36,7 +36,8 @@ export class Validators {
     const typedModule = module as Event;
     return (
       typeof typedModule.event === "string" &&
-      (typeof typedModule.once === "boolean" || typedModule.once === undefined) &&
+      (typeof typedModule.once === "boolean" ||
+        typedModule.once === undefined) &&
       typeof typedModule.action === "function"
     );
   }
@@ -69,11 +70,9 @@ export class Validators {
     }
 
     // Check optional fields
-    const descriptionIsValid =
-      typeof typedConfig.description === "undefined" ||
+    const descriptionIsValid = typeof typedConfig.description === "undefined" ||
       typeof typedConfig.description === "string";
-    const configIsValid =
-      typeof typedConfig.config === "undefined" ||
+    const configIsValid = typeof typedConfig.config === "undefined" ||
       (typedConfig.config !== null && typeof typedConfig.config === "object");
 
     return descriptionIsValid && configIsValid;

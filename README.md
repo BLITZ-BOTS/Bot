@@ -3,6 +3,41 @@
 This bot is designed to load and manage plugins dynamically, handling their
 respective events and commands.
 
+# Example Usage
+
+```typescript
+const bot = new Bot({ token: token });
+bot.start();
+```
+
+### Custom Intents
+
+```typescript
+const customIntents = [
+  IntentsBitField.Flags.Guilds,
+  IntentsBitField.Flags.GuildMessages,
+];
+
+const bot = new Bot({ token: token, intents: customIntents });
+bot.start();
+```
+
+### Custom Plugin Directory
+
+```typescript
+const bot = new Bot({ token: token, pluginsDir: "./custom_plugins" });
+bot.start();
+```
+
+
+### Load Within A Server
+
+```typescript
+const bot = new Bot({ token: token, server: "123456789101112" });
+bot.start();
+```
+
+
 ## Project Structure
 
 The project is organized into a clear directory structure that separates the

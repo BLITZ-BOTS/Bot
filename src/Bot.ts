@@ -48,14 +48,14 @@
 
 import {
   Client,
-  IntentsBitField,
   Collection,
+  IntentsBitField,
+  Interaction,
   REST,
   Routes,
-  Interaction,
 } from "npm:discord.js";
 import { PluginLoader } from "./Utils/PluginLoader.ts";
-import { Plugin, Command } from "./Types/Plugin.ts";
+import { Command, Plugin } from "./Types/Plugin.ts";
 
 export class Bot {
   private readonly client: Client;
@@ -63,18 +63,24 @@ export class Bot {
   private plugins: Plugin[] = [];
   private readonly commands: Collection<string, Command> = new Collection();
   private pluginsDir: string;
+  private server?: string;
 
   constructor({
     token,
     intents,
     pluginsDir = `${Deno.cwd()}/plugins`,
+    server,
   }: {
     token: string;
     intents?: IntentsBitField[];
     pluginsDir?: string;
+    server?: string;
   }) {
     this.token = token;
     this.pluginsDir = pluginsDir;
+    if (server) {
+      this.server = server;
+    }
 
     const defaultIntents = [
       IntentsBitField.Flags.Guilds,
@@ -134,9 +140,19 @@ export class Bot {
     );
 
     try {
-      await rest.put(Routes.applicationCommands(this.client.user.id), {
-        body: commands,
-      });
+      if (this.server) {
+        await rest.put(
+          Routes.applicationGuildCommands(this.client.user.id, this.server),
+          {
+            body: commands,
+          },
+        );
+      } else {
+        await rest.put(Routes.applicationCommands(this.client.user.id), {
+          body: commands,
+        });
+      }
+
       console.info("Successfully registered application commands");
     } catch (error) {
       console.error("Failed to register application commands", error);

@@ -65,7 +65,9 @@ export class PluginLoader {
    * @param pluginsDir - The directory path where plugins are stored. Defaults to './plugins' if not provided.
    */
   constructor(pluginsDir?: string) {
-    this.PluginsDir = pluginsDir ? `${Deno.cwd()}/${pluginsDir}` : `${Deno.cwd()}/plugins`;
+    this.PluginsDir = pluginsDir
+      ? `${Deno.cwd()}/${pluginsDir}`
+      : `${Deno.cwd()}/plugins`;
   }
 
   /**
