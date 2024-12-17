@@ -58,8 +58,20 @@ import { ModuleLoader } from "./ModuleLoader.ts";
  */
 
 export class PluginLoader {
-  private readonly PluginsDir = `${Deno.cwd()}/plugins`;
+  private PluginsDir: string;
 
+  /**
+   * Constructs the PluginLoader with an optional directory path.
+   * @param pluginsDir - The directory path where plugins are stored. Defaults to './plugins' if not provided.
+   */
+  constructor(pluginsDir?: string) {
+    this.PluginsDir = pluginsDir ? `${Deno.cwd()}/${pluginsDir}` : `${Deno.cwd()}/plugins`;
+  }
+
+  /**
+   * Loads all plugins from the configured directory.
+   * @returns A list of loaded plugins.
+   */
   async LoadPlugins(): Promise<Plugin[]> {
     const Plugins: Plugin[] = [];
 
@@ -78,6 +90,11 @@ export class PluginLoader {
     return Plugins;
   }
 
+  /**
+   * Loads the files for a specific plugin, including config, commands, and events.
+   * @param PluginName - The name of the plugin to load.
+   * @returns A loaded plugin or null if loading failed.
+   */
   private async LoadPluginFiles(PluginName: string): Promise<Plugin | null> {
     try {
       const PluginPath = `${this.PluginsDir}/${PluginName}`;
@@ -119,6 +136,11 @@ export class PluginLoader {
     }
   }
 
+  /**
+   * Loads and parses the plugin's configuration file (`blitz.config.yaml`).
+   * @param PluginPath - The path to the plugin directory.
+   * @returns A parsed configuration object or null if the configuration is invalid or missing.
+   */
   private async LoadPluginConfig(
     PluginPath: string,
   ): Promise<Partial<PluginConfig> | null> {
@@ -144,6 +166,11 @@ export class PluginLoader {
     }
   }
 
+  /**
+   * Loads all commands for the plugin from the 'commands' directory.
+   * @param PluginPath - The path to the plugin directory.
+   * @returns A list of command modules or an empty array if no commands exist.
+   */
   private async LoadPluginCommands(PluginPath: string): Promise<Command[]> {
     const PluginCommandPath = `${PluginPath}/commands`;
 
@@ -169,6 +196,11 @@ export class PluginLoader {
     }
   }
 
+  /**
+   * Loads all events for the plugin from the 'events' directory.
+   * @param PluginPath - The path to the plugin directory.
+   * @returns A list of event modules or an empty array if no events exist.
+   */
   private async LoadPluginEvents(PluginPath: string): Promise<Event[]> {
     const PluginEventPath = `${PluginPath}/events`;
 
