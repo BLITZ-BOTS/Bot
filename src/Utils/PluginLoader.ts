@@ -66,7 +66,7 @@ export class PluginLoader {
    */
   constructor(pluginsDir?: string) {
     this.PluginsDir = pluginsDir
-      ? `${Deno.cwd()}/${pluginsDir}`
+      ? `${pluginsDir}`
       : `${Deno.cwd()}/plugins`;
   }
 
